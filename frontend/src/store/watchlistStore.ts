@@ -38,6 +38,12 @@ const INSTRUMENT_LOOKUP: Record<string, { name: string; sector: string }> = {
   WIPRO: { name: 'Wipro', sector: 'IT' },
   ADANIENT: { name: 'Adani Enterprises', sector: 'Infra' },
   PIDILITIND: { name: 'Pidilite Industries', sector: 'Chemicals' },
+  ZOMATO: { name: 'Zomato', sector: 'Tech / Food' },
+  BAJFINANCE: { name: 'Bajaj Finance', sector: 'Financial Services' },
+  ITC: { name: 'ITC Limited', sector: 'FMCG' },
+  BHARTIARTL: { name: 'Bharti Airtel', sector: 'Telecom' },
+  KOTAKBANK: { name: 'Kotak Mahindra Bank', sector: 'Banking' },
+  SUNPHARMA: { name: 'Sun Pharma', sector: 'Healthcare' },
 };
 
 interface WatchlistStore {

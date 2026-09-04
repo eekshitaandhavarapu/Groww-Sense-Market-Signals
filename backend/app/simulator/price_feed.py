@@ -26,6 +26,8 @@ INSTRUMENTS = {
     "RELIANCE": {"base_price": 2800.0, "volatility": 0.025},
     "TATAMOTORS": {"base_price": 600.0, "volatility": 0.030},
     "ADANIENT": {"base_price": 2400.0, "volatility": 0.028},
+    "ZOMATO": {"base_price": 250.0, "volatility": 0.026},
+    "BAJFINANCE": {"base_price": 7100.0, "volatility": 0.022},
     # Medium volatility
     "INFY": {"base_price": 1520.0, "volatility": 0.012},
     "TCS": {"base_price": 3400.0, "volatility": 0.010},
@@ -33,10 +35,14 @@ INSTRUMENTS = {
     "WIPRO": {"base_price": 450.0, "volatility": 0.013},
     "ICICIBANK": {"base_price": 1100.0, "volatility": 0.012},
     "SBIN": {"base_price": 780.0, "volatility": 0.014},
+    "BHARTIARTL": {"base_price": 1550.0, "volatility": 0.012},
+    "KOTAKBANK": {"base_price": 1780.0, "volatility": 0.011},
     # Low volatility
     "NESTLEIND": {"base_price": 2300.0, "volatility": 0.005},
     "HINDUNILVR": {"base_price": 2500.0, "volatility": 0.004},
     "PIDILITIND": {"base_price": 2700.0, "volatility": 0.005},
+    "ITC": {"base_price": 480.0, "volatility": 0.006},
+    "SUNPHARMA": {"base_price": 1820.0, "volatility": 0.007},
 }
 
 # Current prices (initialized from base prices)

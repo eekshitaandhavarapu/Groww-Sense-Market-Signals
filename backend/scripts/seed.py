@@ -16,6 +16,8 @@ INSTRUMENTS = [
     {"symbol": "RELIANCE", "name": "Reliance Industries", "sector": "Energy", "base_price": 2800, "volatility": 0.025},
     {"symbol": "TATAMOTORS", "name": "Tata Motors", "sector": "Auto", "base_price": 600, "volatility": 0.030},
     {"symbol": "ADANIENT", "name": "Adani Enterprises", "sector": "Infra", "base_price": 2400, "volatility": 0.028},
+    {"symbol": "ZOMATO", "name": "Zomato", "sector": "Tech / Food", "base_price": 250, "volatility": 0.026},
+    {"symbol": "BAJFINANCE", "name": "Bajaj Finance", "sector": "Financial Services", "base_price": 7100, "volatility": 0.022},
     # Medium volatility
     {"symbol": "INFY", "name": "Infosys", "sector": "IT", "base_price": 1520, "volatility": 0.012},
     {"symbol": "TCS", "name": "TCS", "sector": "IT", "base_price": 3400, "volatility": 0.010},
@@ -23,10 +25,14 @@ INSTRUMENTS = [
     {"symbol": "WIPRO", "name": "Wipro", "sector": "IT", "base_price": 450, "volatility": 0.013},
     {"symbol": "ICICIBANK", "name": "ICICI Bank", "sector": "Banking", "base_price": 1100, "volatility": 0.012},
     {"symbol": "SBIN", "name": "State Bank of India", "sector": "Banking", "base_price": 780, "volatility": 0.014},
+    {"symbol": "BHARTIARTL", "name": "Bharti Airtel", "sector": "Telecom", "base_price": 1550, "volatility": 0.012},
+    {"symbol": "KOTAKBANK", "name": "Kotak Mahindra Bank", "sector": "Banking", "base_price": 1780, "volatility": 0.011},
     # Low volatility
     {"symbol": "NESTLEIND", "name": "Nestlé India", "sector": "FMCG", "base_price": 2300, "volatility": 0.005},
     {"symbol": "HINDUNILVR", "name": "Hindustan Unilever", "sector": "FMCG", "base_price": 2500, "volatility": 0.004},
     {"symbol": "PIDILITIND", "name": "Pidilite Industries", "sector": "Chemicals", "base_price": 2700, "volatility": 0.005},
+    {"symbol": "ITC", "name": "ITC Limited", "sector": "FMCG", "base_price": 480, "volatility": 0.006},
+    {"symbol": "SUNPHARMA", "name": "Sun Pharma", "sector": "Healthcare", "base_price": 1820, "volatility": 0.007},
 ]
 
 # Default watchlist instruments (auto-added on first visit)

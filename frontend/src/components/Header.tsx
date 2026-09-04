@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useWatchlistStore } from '../store/watchlistStore';
+import { UserProfileModal } from './UserProfileModal';
 
 interface HeaderProps {
   wsStatus: 'disconnected' | 'connecting' | 'connected';
@@ -9,7 +10,11 @@ interface HeaderProps {
 
 export function Header({ wsStatus, onAddClick, onLogout }: HeaderProps) {
   const [showActivity, setShowActivity] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const activityLog = useWatchlistStore((s) => s.activityLog);
+
+  const displayName = localStorage.getItem('watchlist_user_name') || 'Trader';
+  const initials = displayName.slice(0, 2).toUpperCase();
 
   const statusLabel = {
     disconnected: 'Offline',
@@ -30,6 +35,45 @@ export function Header({ wsStatus, onAddClick, onLogout }: HeaderProps) {
           />
           {statusLabel}
         </div>
+
+        {/* User Profile Button */}
+        <button
+          type="button"
+          onClick={() => setShowProfile(true)}
+          title="Manage User Profile & Settings"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: '#F0FDF9',
+            border: '1px solid #A7F3D0',
+            borderRadius: 20,
+            padding: '4px 10px 4px 6px',
+            cursor: 'pointer',
+            fontSize: '0.76rem',
+            fontWeight: 600,
+            color: '#065F46',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: '50%',
+              background: '#00D09C',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.68rem',
+              fontWeight: 700,
+            }}
+          >
+            {initials}
+          </span>
+          <span>{displayName}</span>
+        </button>
 
         {/* Subtle Activity Panel Toggle */}
         <button
@@ -138,78 +182,71 @@ export function Header({ wsStatus, onAddClick, onLogout }: HeaderProps) {
           maxWidth: '90vw',
           background: '#FFFFFF',
           border: '1px solid #ECEFF2',
-          borderRadius: 8,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-          zIndex: 100,
-          padding: 14,
+          borderRadius: 12,
+          boxShadow: '0 12px 32px rgba(27, 31, 42, 0.12)',
+          zIndex: 1000,
+          padding: '16px',
         }}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: 10,
-            borderBottom: '1px solid #F0F2F5',
+            marginBottom: 12,
+            borderBottom: '1px solid #F0F1F5',
             paddingBottom: 8,
           }}>
-            <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#1B1F2A' }}>
-              Recent Market Signals
+            <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1B1F2A' }}>
+              Live Stream Activity
             </span>
-            <button
-              type="button"
-              onClick={() => setShowActivity(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '0.725rem',
-                color: '#71788E',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              Close
-            </button>
+            <span style={{ fontSize: '0.72rem', color: '#8C919D' }}>
+              Last {Math.min(activityLog.length, 10)} Events
+            </span>
           </div>
 
-          <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {activityLog.length === 0 ? (
-              <div style={{ fontSize: '0.775rem', color: '#8C919D', textAlign: 'center', padding: 16 }}>
-                No signal transitions recorded yet.
-              </div>
-            ) : (
-              activityLog.map((ev) => {
-                const dotColor = ev.type === 'meaningful' ? '#E5453D' : ev.type === 'notable' ? '#F5A623' : '#00D09C';
-                return (
-                  <div
-                    key={ev.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 8,
-                      fontSize: '0.75rem',
-                      padding: '4px 0',
-                    }}
-                  >
+          {activityLog.length === 0 ? (
+            <div style={{ padding: '20px 0', textAlign: 'center', color: '#8C919D', fontSize: '0.8rem' }}>
+              No regime shifts recorded yet. Listening to WebSocket ticks...
+            </div>
+          ) : (
+            <div style={{ maxHeight: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {activityLog.slice(0, 10).map((act, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 10px',
+                    borderRadius: 6,
+                    background: act.type === 'meaningful' ? '#FDE8E7' : act.type === 'notable' ? '#FEF3DB' : '#F8F9FB',
+                    border: `1px solid ${act.type === 'meaningful' ? '#FBC8C6' : act.type === 'notable' ? '#FDE8C7' : '#ECEFF2'}`,
+                    fontSize: '0.78rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{
-                      width: 6,
-                      height: 6,
+                      width: 8,
+                      height: 8,
                       borderRadius: '50%',
-                      background: dotColor,
-                      marginTop: 5,
-                      flexShrink: 0,
+                      background: act.type === 'meaningful' ? '#E5453D' : act.type === 'notable' ? '#F5A623' : '#00B386',
                     }} />
-                    <span style={{ fontFamily: 'monospace', color: '#71788E', fontSize: '0.7rem', minWidth: 55 }}>
-                      {ev.timestamp}
-                    </span>
-                    <span style={{ color: '#1B1F2A', lineHeight: 1.4 }}>
-                      {ev.message}
-                    </span>
+                    <strong style={{ color: '#1B1F2A' }}>{act.symbol}</strong>
+                    <span style={{ color: '#4B5565' }}>{act.message}</span>
                   </div>
-                );
-              })
-            )}
-          </div>
+                  <span style={{ color: '#8C919D', fontSize: '0.7rem' }}>{act.timestamp}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
+
+      {/* User Profile Modal */}
+      <UserProfileModal
+        isOpen={showProfile}
+        onClose={() => setShowProfile(false)}
+        onLogout={onLogout}
+      />
     </header>
   );
 }
