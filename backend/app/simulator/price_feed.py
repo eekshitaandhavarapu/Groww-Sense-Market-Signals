@@ -138,3 +138,24 @@ def register_instrument_simulator(symbol: str, base_price: float = 1000.0, volat
         current_prices[sym] = float(base_price if base_price > 0 else 1000.0)
         last_tick_times[sym] = datetime.now(timezone.utc)
         logger.info(f"Registered new custom instrument in simulator: {sym} (base: {base_price}, vol: {volatility})")
+
+async def inject_flash_spike(symbol: str, direction: str = "up", magnitude: float = 3.0):
+    """Manually inject a flash spike to trigger immediate statistical anomaly detection."""
+    r = get_redis()
+    sym = symbol.strip().upper()
+    now = datetime.now(timezone.utc)
+    
+    from app.services.change_detection import get_instrument_stats
+    stats = await get_instrument_stats(r, sym)
+    base = current_prices.get(sym, 1000.0)
+    std = stats["stddev"] if (stats and stats["stddev"] > 0) else (base * 0.02)
+    mean = stats["mean"] if (stats and stats["mean"] > 0) else base
+    
+    spike_delta = std * magnitude
+    new_price = round(mean + spike_delta if direction == "up" else max(1.0, mean - spike_delta), 2)
+    
+    result = await process_tick(r, sym, new_price, now)
+    if result:
+        current_prices[sym] = new_price
+        last_tick_times[sym] = now
+    return {"symbol": sym, "price": new_price, "result": result}

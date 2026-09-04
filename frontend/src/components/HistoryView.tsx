@@ -19,10 +19,50 @@ function formatPrice(val: number | null): string {
 export function HistoryView({ items, ticks, onSelect, replaySymbol }: HistoryViewProps) {
   const [subTab, setSubTab] = useState<'audit' | 'replay'>(replaySymbol ? 'replay' : 'audit');
   const [activeReplaySymbol, setActiveReplaySymbol] = useState<string>(replaySymbol || items[0]?.symbol || 'RELIANCE');
+  const [exported, setExported] = useState(false);
 
   const handleStartReplay = (symbol: string) => {
     setActiveReplaySymbol(symbol);
     setSubTab('replay');
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['Symbol', 'Name', 'Sector', 'Last_Seen_Price', 'Current_Price', 'Price_Delta', 'Pct_Delta', 'Z_Score', 'Classification', 'Timestamp'];
+    const rows = items.map((item) => {
+      const tick = ticks[item.symbol];
+      const currentPrice = tick?.price ?? item.current_price ?? 0;
+      const currentZ = tick?.z_score ?? item.z_score ?? 0;
+      const since = item.since_last_seen;
+      const lastSeenPrice = since?.last_seen_price ?? item.mean ?? currentPrice;
+      const deltaPrice = currentPrice - lastSeenPrice;
+      const deltaPct = lastSeenPrice > 0 ? (deltaPrice / lastSeenPrice) * 100 : 0;
+      const classification = Math.abs(currentZ) >= 2.5 ? 'Meaningful Anomaly' : Math.abs(currentZ) >= 1.5 ? 'Notable Movement' : 'Routine Noise';
+
+      return [
+        item.symbol,
+        `"${item.name}"`,
+        item.sector || 'General',
+        lastSeenPrice.toFixed(2),
+        currentPrice.toFixed(2),
+        deltaPrice.toFixed(2),
+        `${deltaPct.toFixed(2)}%`,
+        currentZ.toFixed(2),
+        classification,
+        new Date().toISOString(),
+      ].join(',');
+    });
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `groww_sense_session_audit_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setExported(true);
+    setTimeout(() => setExported(false), 2000);
   };
 
   return (
@@ -30,27 +70,57 @@ export function HistoryView({ items, ticks, onSelect, replaySymbol }: HistoryVie
       {/* Sub-Tab Navigation */}
       <div className="history-nav-bar">
         <div className="history-header-block">
-          <h2 className="history-title">Session Comparison & Signal History</h2>
+          <h2 className="history-title">Session Comparison &amp; Signal History</h2>
           <p className="history-subtitle">
             Audit baseline price drift and replay tick-by-tick anomaly developments.
           </p>
         </div>
 
-        <div className="history-subtabs">
-          <button
-            type="button"
-            className={`subtab-btn ${subTab === 'audit' ? 'subtab-btn--active' : ''}`}
-            onClick={() => setSubTab('audit')}
-          >
-            Session Drift Audit
-          </button>
-          <button
-            type="button"
-            className={`subtab-btn ${subTab === 'replay' ? 'subtab-btn--active' : ''}`}
-            onClick={() => setSubTab('replay')}
-          >
-            Signal Replay Engine
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {subTab === 'audit' && (
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              style={{
+                background: exported ? '#E6F9F3' : '#FFFFFF',
+                border: exported ? '1px solid #00D09C' : '1px solid #DFE2E8',
+                color: exported ? '#008764' : '#4B5565',
+                borderRadius: 8,
+                padding: '7px 14px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              {exported ? 'Downloaded!' : 'Export CSV Audit'}
+            </button>
+          )}
+
+          <div className="history-subtabs">
+            <button
+              type="button"
+              className={`subtab-btn ${subTab === 'audit' ? 'subtab-btn--active' : ''}`}
+              onClick={() => setSubTab('audit')}
+            >
+              Session Drift Audit
+            </button>
+            <button
+              type="button"
+              className={`subtab-btn ${subTab === 'replay' ? 'subtab-btn--active' : ''}`}
+              onClick={() => setSubTab('replay')}
+            >
+              Signal Replay Engine
+            </button>
+          </div>
         </div>
       </div>
 

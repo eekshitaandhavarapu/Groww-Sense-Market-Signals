@@ -1,3 +1,4 @@
+import { playAnomalyChime } from "../utils/audio";
 /* Zustand store for live WebSocket price data, data health tracking, and event activity log. */
 
 import { create } from 'zustand';
@@ -152,6 +153,7 @@ export const useWatchlistStore = create<WatchlistStore>((set) => ({
       const devPct = mean > 0 ? ((tick.price - mean) / mean) * 100 : 0;
 
       if (newClass === 'meaningful' && prevClass !== 'meaningful') {
+        playAnomalyChime();
         newEvent = {
           id: `${symbol}-${now}`,
           timestamp: timeStr,

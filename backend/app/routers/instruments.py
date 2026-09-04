@@ -103,3 +103,14 @@ async def get_history(symbol: str):
         upper_band=[round(v, 2) for v in upper_band],
         lower_band=[round(v, 2) for v in lower_band],
     )
+
+@router.post("/{symbol}/spike")
+async def trigger_price_spike(
+    symbol: str,
+    direction: str = Query(default="up"),
+    magnitude: float = Query(default=3.0, ge=1.5, le=6.0),
+):
+    """Trigger an intentional statistical anomaly price spike for live evaluation demo."""
+    from app.simulator.price_feed import inject_flash_spike
+    result = await inject_flash_spike(symbol, direction=direction, magnitude=magnitude)
+    return result

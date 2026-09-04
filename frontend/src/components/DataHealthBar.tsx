@@ -1,7 +1,8 @@
-/* DataHealthBar.tsx — Feed status, latency, data freshness, pause/resume simulation control, and activity stream. */
+/* DataHealthBar.tsx — Feed status, latency, data freshness, pause/resume simulation control, anomaly spike injection, and activity stream. */
 
 import { useState, useEffect } from 'react';
 import { useWatchlistStore } from '../store/watchlistStore';
+import { apiFetch } from '../api/client';
 
 export function DataHealthBar() {
   const wsStatus = useWatchlistStore((s) => s.wsStatus);
@@ -14,6 +15,8 @@ export function DataHealthBar() {
 
   const [secondsAgo, setSecondsAgo] = useState(0);
   const [showActivity, setShowActivity] = useState(false);
+  const [spikeLoading, setSpikeLoading] = useState(false);
+  const [spikeToast, setSpikeToast] = useState<string | null>(null);
 
   // Update seconds ago live counter
   useEffect(() => {
@@ -23,6 +26,21 @@ export function DataHealthBar() {
     }, 1000);
     return () => clearInterval(timer);
   }, [lastTickTimestamp]);
+
+  const handleTriggerSpike = async (symbol: string = 'TATAMOTORS') => {
+    setSpikeLoading(true);
+    try {
+      await apiFetch(`/instruments/${symbol}/spike?direction=up&magnitude=3.2`, {
+        method: 'POST',
+      });
+      setSpikeToast(`Injected +3.2σ spike on ${symbol}!`);
+      setTimeout(() => setSpikeToast(null), 3000);
+    } catch (err) {
+      console.error('Failed to trigger spike:', err);
+    } finally {
+      setSpikeLoading(false);
+    }
+  };
 
   const isStale = isFeedPaused || secondsAgo >= 8;
   const freshness = isStale ? (isFeedPaused ? '0.0%' : '92.4%') : '99.8%';
@@ -82,8 +100,25 @@ export function DataHealthBar() {
           </div>
         </div>
 
-        {/* Right: Simulation Controls & Activity Feed Toggle */}
-        <div className="data-health-actions">
+        {/* Right: Simulation Controls & Trigger Anomaly Spike */}
+        <div className="data-health-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Spike Anomaly Trigger Button */}
+          <button
+            type="button"
+            className="btn-health-control"
+            onClick={() => handleTriggerSpike('TATAMOTORS')}
+            disabled={spikeLoading}
+            style={{
+              background: '#FEF3DB',
+              border: '1px solid #F5A623',
+              color: '#D48E1A',
+              fontWeight: 700,
+            }}
+            title="Inject an intentional 3.2σ anomaly to test live Flagged Zone promotion"
+          >
+            {spikeLoading ? 'Triggering...' : '⚡ Test 3σ Spike'}
+          </button>
+
           {/* Pause / Resume button for demoing stale-data handling */}
           <button
             type="button"
@@ -104,6 +139,25 @@ export function DataHealthBar() {
           </button>
         </div>
       </div>
+
+      {/* Spike notification toast */}
+      {spikeToast && (
+        <div
+          style={{
+            background: '#E6F9F3',
+            border: '1px solid #00D09C',
+            color: '#008764',
+            padding: '8px 14px',
+            borderRadius: 8,
+            fontSize: '0.82rem',
+            fontWeight: 700,
+            textAlign: 'center',
+            marginTop: 6,
+          }}
+        >
+          {spikeToast} (Watch the Flagged Zone and badge promote in real-time)
+        </div>
+      )}
 
       {/* Stale Warning Banner if paused or lagging */}
       {isStale && (
@@ -139,20 +193,15 @@ export function DataHealthBar() {
               Close
             </button>
           </div>
-
-          <div className="activity-event-list">
+          <div className="activity-list">
             {activityLog.length === 0 ? (
-              <div className="activity-empty">No signal transitions recorded yet.</div>
+              <div className="activity-empty">No signal transitions yet. Listening to WebSocket stream...</div>
             ) : (
-              activityLog.map((ev) => (
-                <div key={ev.id} className="activity-event-row">
-                  <span className="activity-time font-mono">{ev.timestamp}</span>
-                  <span
-                    className={`activity-tag activity-tag--${ev.type}`}
-                  >
-                    {ev.type.toUpperCase()}
-                  </span>
-                  <span className="activity-msg">{ev.message}</span>
+              activityLog.map((event) => (
+                <div key={event.id} className={`activity-row activity-row--${event.type}`}>
+                  <span className="activity-time">{event.timestamp}</span>
+                  <span className="activity-symbol">{event.symbol}</span>
+                  <span className="activity-msg">{event.message}</span>
                 </div>
               ))
             )}
