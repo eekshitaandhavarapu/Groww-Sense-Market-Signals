@@ -1,0 +1,33 @@
+services:
+  # Full-Stack App: Frontend + API + Simulator + WebSocket
+  - type: web
+    name: groww-sense
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: groww-sense-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: groww-sense-redis
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: "http://localhost:5173,https://*.vercel.app,https://*.onrender.com,*"
+
+  # Redis Instance
+  - type: redis
+    name: groww-sense-redis
+    ipAllowList: []
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: groww-sense-db
+    databaseName: growwsense
+    user: growwsense
+    plan: free

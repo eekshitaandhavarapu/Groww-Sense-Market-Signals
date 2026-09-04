@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+build/
+dist/
+.eggs/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+*.db
+*.sqlite3
+
+# Node & Frontend
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/node_modules/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment & Credentials
+.env
+.env.production
+.env.local
+
+# OS & Editors
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo

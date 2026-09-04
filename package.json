@@ -1,0 +1,13 @@
+{
+  "name": "groww-sense",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Groww Sense \u2014 Volatility-Aware Market Watchlist Engine",
+  "scripts": {
+    "postinstall": "npm --prefix frontend install",
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "lint": "npm --prefix frontend run lint"
+  }
+}
