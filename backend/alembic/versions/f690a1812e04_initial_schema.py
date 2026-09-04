@@ -26,7 +26,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('symbol')
     )
     op.create_table('users',
-    sa.Column('id', sa.Uuid(), server_default=sa.text('gen_random_uuid()'), nullable=False),
+    sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('email', sa.Text(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id'),
@@ -42,7 +42,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('user_id', 'symbol')
     )
     op.create_table('watchlists',
-    sa.Column('id', sa.Uuid(), server_default=sa.text('gen_random_uuid()'), nullable=False),
+    sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('user_id', sa.Uuid(), nullable=False),
     sa.Column('name', sa.Text(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
@@ -50,7 +50,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('watchlist_items',
-    sa.Column('id', sa.Uuid(), server_default=sa.text('gen_random_uuid()'), nullable=False),
+    sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('watchlist_id', sa.Uuid(), nullable=False),
     sa.Column('symbol', sa.Text(), nullable=False),
     sa.Column('added_at', sa.DateTime(timezone=True), nullable=False),

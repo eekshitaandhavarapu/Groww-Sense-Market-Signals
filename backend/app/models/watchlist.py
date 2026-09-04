@@ -13,7 +13,7 @@ class Watchlist(Base):
     __tablename__ = "watchlists"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
+        primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
@@ -32,7 +32,7 @@ class WatchlistItem(Base):
     __tablename__ = "watchlist_items"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
+        primary_key=True, default=uuid.uuid4
     )
     watchlist_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("watchlists.id", ondelete="CASCADE"), nullable=False
