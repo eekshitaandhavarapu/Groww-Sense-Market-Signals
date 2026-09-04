@@ -23,15 +23,16 @@ function getInitialScreen(): 'landing' | 'signup' | 'app' {
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
     const hash = window.location.hash.toLowerCase();
-    if (params.get('page') === 'landing' || hash === '#landing') return 'landing';
+    if (params.get('page') === 'app' || hash === '#app') return 'app';
     if (params.get('page') === 'signup' || hash === '#signup') return 'signup';
+    if (params.get('page') === 'landing' || hash === '#landing') return 'landing';
     if (params.get('logout') === 'true') {
       clearStoredUser();
       return 'landing';
     }
   }
-  // Default to immediate interactive watchlist experience for evaluator
-  return 'app';
+  // Default to starting landing page first
+  return 'landing';
 }
 
 function AppContent() {
@@ -90,7 +91,7 @@ function AppContent() {
     return (
       <>
         <LandingPage
-          onGetStarted={() => setCurrentScreen('signup')}
+          onGetStarted={() => setCurrentScreen('app')}
           onLogin={() => setCurrentScreen('signup')}
         />
         {currentScreen === 'signup' && (

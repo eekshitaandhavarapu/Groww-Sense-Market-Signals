@@ -36,6 +36,7 @@ def upgrade() -> None:
     sa.Column('user_id', sa.Uuid(), nullable=False),
     sa.Column('symbol', sa.Text(), nullable=False),
     sa.Column('last_seen_price', sa.Numeric(), nullable=False),
+    sa.Column('last_seen_z_score', sa.Numeric(), nullable=True),
     sa.Column('last_seen_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['symbol'], ['instruments.symbol'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
