@@ -10,120 +10,116 @@ https://groww-sense-market-signals.onrender.com
 
 ## Overview
 
-Groww Sense is a real-time market surveillance interface designed to filter market noise and isolate genuine price anomalies across tracked equities.
+Groww Sense is a real-time market surveillance application designed to filter out everyday market noise and isolate genuine price anomalies across tracked equities.
 
-Standard market watchlists typically rely on uniform percentage change thresholds to trigger alerts. This approach fails to account for the inherent volatility differences between individual stocks. A 2% price movement in a high-beta stock can be routine intraday variance, while the same 2% shift in a low-beta defensive stock represents a severe statistical outlier.
+Standard market watchlists typically rely on uniform percentage change rules (such as alerting whenever a stock moves by 2%). This approach does not account for the natural differences between stocks:
+- A 2% move in a fast-moving stock (like Tata Motors) is routine everyday noise.
+- The same 2% move in a slow, steady stock (like Nestlé India) is a rare and significant event.
 
-Groww Sense addresses this by establishing an in-memory, rolling statistical baseline for every tracked instrument. Each incoming price tick is evaluated against the stock's recent variance profile using rolling standard scores (z-scores), dynamically separating routine market fluctuations from meaningful structural breaks.
-
----
-
-## Problem
-
-Fixed percentage-based alerts introduce two critical operational failure modes in market monitoring:
-
-1. **Alert Fatigue on High-Volatility Equities:** Instruments with wide intraday trading ranges generate continuous false positives when evaluated against static percentage hurdles.
-2. **Missed Signals on Low-Volatility Equities:** Highly stable instruments rarely trigger static percentage thresholds, allowing significant abnormal regime shifts to go unnoticed.
-
-Treating all instruments with uniform thresholds ignores the statistical distribution of individual asset price series.
+Groww Sense solves this by tracking a rolling memory of recent prices for each stock individually. By comparing every new price against that stock's recent baseline, the system automatically separates routine market fluctuations from meaningful anomalies.
 
 ---
 
-## Solution
+## The Problem
 
-Groww Sense computes a localized, per-instrument rolling statistical baseline across recent price ticks:
+Fixed percentage-based alerts create two major problems for traders:
 
-- **Rolling Mean ($\mu$):** Tracks short-term equilibrium price across a rolling window of $N=20$ ticks.
-- **Rolling Standard Deviation ($\sigma$):** Quantifies localized price dispersion and volatility.
-- **Standard Score ($z$):** Measures the standard deviations by which the latest price deviates from the rolling mean:
-  $$z = \frac{p_{\text{current}} - \mu}{\sigma}$$
-- **Dynamic Zone Allocation:** Instruments with $|z| \ge 1.5\sigma$ are promoted to the Flagged Zone, while routine price movements ($|z| < 1.5\sigma$) remain in the Quiet Zone.
-- **Deterministic Explainability:** Mathematical parameters ($\mu$, $\sigma$, $z$) are surfaced alongside an interactive 20-tick visual replay, ensuring full auditability without black-box predictive models.
+1. **Alert Fatigue:** High-volatility stocks trigger constant false alarms even when trading normally.
+2. **Missed Signals:** Low-volatility stocks rarely reach fixed percentage thresholds, causing unusual movements to go unnoticed.
+
+---
+
+## The Solution
+
+Groww Sense dynamically organizes stocks into two distinct zones on the dashboard:
+
+- **Quiet Zone:** Routine, expected price movements stay compact and unobtrusive.
+- **Flagged Zone:** Stocks that experience unusual statistical price jumps or drops are automatically promoted to the top with clear severity badges.
+- **Explain Panel & Replay:** Users can click any stock to view the step-by-step breakdown of why it was flagged and replay the last 20 price ticks frame-by-frame.
 
 ---
 
 ## Key Features
 
-- **Rolling Z-Score Anomaly Detection:** Continuous computation of standardized price deviation per instrument.
-- **20-Tick Rolling Window:** In-memory sliding buffer maintained via Redis list primitives.
-- **Dual-Zone Watchlist Hierarchy:** Automatic separation into Flagged ($|z| \ge 1.5\sigma$) and Quiet ($|z| < 1.5\sigma$) zones.
-- **Statistical Explainability Panel:** Detailed inspection view displaying rolling mean, standard deviation, deviation delta, and volatility envelopes.
-- **20-Tick Signal Replay:** Step-by-step scrubber to replay the historical tick trajectory leading up to an anomaly.
-- **Data Health & Stale-Tick Protection:** Visual latency, socket status monitoring, monotonic timestamp validation, and out-of-order tick rejection.
-- **Session History & Baseline Diffing:** Audit log comparing current prices against the user's recorded last-seen baseline.
-- **Sector & Volatility Insights:** Portfolio-level variance breakdown and sector dispersion analytics.
-- **Simulated Market Feed:** 12-instrument Brownian motion price generator with pre-calibrated volatility tiers and deliberate edge-case injection.
+- **Rolling Volatility Anomaly Detection:** Dynamically calculates price deviation per stock.
+- **20-Tick Rolling Memory:** Maintains a continuous window of the last 20 prices in memory.
+- **Dual-Zone Watchlist:** Automatically splits stocks into Flagged and Quiet zones.
+- **Signal Explanation Panel:** Displays the exact average, variance, and deviation values for full transparency.
+- **20-Tick Signal Replay:** Step forward and backward through the price sequence leading up to an alert.
+- **Data Health Bar:** Live WebSocket status, latency measurement, tick counter, and stream pause/resume controls.
+- **Session History:** Tracks price changes and alerts that occurred since your last visit.
+- **Market Insights:** Visual breakdown of portfolio volatility and sector distribution.
+- **Simulated Market Feed:** 12 Indian equity instruments generating live ticks with realistic volatility.
 
 ---
 
-## Statistical Method
+## How the Anomaly Score is Calculated (Step-by-Step)
 
-### Formulation
+Instead of complex static rules, Groww Sense follows a simple 5-step statistical calculation for every incoming price tick:
 
-For each instrument, the rolling window contains the $N=20$ most recent price observations $P = [p_1, p_2, \dots, p_N]$:
+### Step 1: Record Recent Prices
+The system keeps a sliding window of the last **20 price ticks** for the stock.
 
-$$\mu = \frac{1}{N} \sum_{i=1}^{N} p_i$$
+### Step 2: Calculate the Rolling Average
+Compute the average (mean) price across those 20 ticks:
+```
+Average Price = Sum of the last 20 prices / 20
+```
 
-$$\sigma = \sqrt{\frac{1}{N} \sum_{i=1}^{N} (p_i - \mu)^2}$$
+### Step 3: Measure Normal Fluctuation (Standard Deviation)
+Measure how much the price typically wiggles around that average:
+```
+Fluctuation (Standard Deviation) = Square root of the average squared difference from the mean
+```
 
-$$z = \frac{p_{\text{current}} - \mu}{\sigma}$$
+### Step 4: Compute the Z-Score
+Calculate how many standard deviations away from normal the current price is:
+```
+Z-Score = (Current Price - Average Price) / Fluctuation
+```
 
-Where:
-- $\mu$: Rolling window arithmetic mean.
-- $\sigma$: Rolling window population standard deviation.
-- $z$: Standard score quantifying the magnitude and direction of current price deviation.
+### Step 5: Classify the Signal
+Based on the resulting Z-Score, the stock is categorized into one of three levels:
 
-### Classification Matrix
-
-| Signal | Statistical Condition | Watchlist Action | UI Representation |
+| Signal Level | Z-Score Range | What It Means | Dashboard Action |
 |---|---|---|---|
-| Noise | $|z| < 1.5\sigma$ | Retained in Quiet Zone | Neutral gray indicator |
-| Notable | $1.5\sigma \le |z| < 2.5\sigma$ | Promoted to Flagged Zone | Amber badge with signed $\sigma$ value |
-| Meaningful | $|z| \ge 2.5\sigma$ | Highlighted at top of Flagged Zone | Red badge with full parameter breakdown |
+| **Noise** | Z-Score is between -1.5 and +1.5 | Normal everyday price movement | Stays in the Quiet Zone |
+| **Notable** | Z-Score is between 1.5 and 2.5 (positive or negative) | Price is moving faster than usual | Promoted to Flagged Zone with an amber badge |
+| **Meaningful** | Z-Score is 2.5 or higher (positive or negative) | Highly unusual price anomaly | Placed at the top of Flagged Zone with a red badge |
 
 ### Edge-Case Handling
-
-- **Cold Start ($len < 20$ ticks):** Falls back to fixed percentage thresholds ($\ge 1.5\%$ for Notable, $\ge 3.0\%$ for Meaningful) until a complete 20-tick buffer is accumulated.
-- **Zero Variance ($\sigma < 10^{-9}$):** Protects against division-by-zero during flat price periods by defaulting to fixed percentage checks.
-- **Stale and Duplicate Ticks:** Ticks with timestamps less than or equal to the instrument's last accepted tick timestamp are rejected.
-- **Price Floor:** Random walk values are bounded to prevent negative or zero prices.
+- **New Stocks (Fewer than 20 ticks):** Uses a fallback percentage threshold (1.5% for Notable, 3.0% for Meaningful) until 20 ticks are recorded.
+- **Flat Prices (Zero Fluctuation):** When price does not change, protected against division by zero using standard fallback rules.
+- **Stale or Out-of-Order Ticks:** Rejects any incoming ticks with timestamps older than the last recorded tick.
 
 ---
 
-## How It Works
+## System Workflow
 
 ```
-Market Tick
-     │
-     ▼
-Timestamp Validation (Monotonic check; discard if <= last_seen)
-     │
-     ▼
-Sliding Window Ingestion (LPUSH to Redis list, trim to N=20)
-     │
-     ▼
-Rolling Statistics Computation (Mean μ, StdDev σ)
-     │
-     ▼
-Z-Score Calculation (z = (price - μ) / σ)
-     │
-     ▼
-Signal Classification (Noise: < 1.5σ | Notable: 1.5σ–2.5σ | Meaningful: >= 2.5σ)
-     │
-     ▼
-WebSocket Broadcast (Stream updated JSON payload to connected clients)
-     │
-     ▼
-UI Zone Re-ordering & Signal Explainability Visualization
+1. Market Tick Arrives (Price + Timestamp)
+          │
+          ▼
+2. Validate Timestamp (Discard duplicate or stale data)
+          │
+          ▼
+3. Update 20-Tick Sliding Window in Memory
+          │
+          ▼
+4. Calculate Rolling Average & Normal Fluctuation
+          │
+          ▼
+5. Compute Z-Score = (Current Price - Average) / Fluctuation
+          │
+          ▼
+6. Classify Signal (Noise / Notable / Meaningful)
+          │
+          ▼
+7. Broadcast Update via WebSocket to Connected Users
+          │
+          ▼
+8. UI Automatically Updates Zones & Volatility Charts
 ```
-
-1. **Market Tick:** Price tick generated or received with timestamp and instrument identifier.
-2. **Validation:** Ingestion layer enforces strict monotonic ordering against the instrument's last recorded timestamp.
-3. **Rolling Statistics:** Computes running $\mu$ and $\sigma$ over the 20-element price buffer.
-4. **Z-Score:** Calculates standardized score relative to the current stock baseline.
-5. **Signal Classification:** Categorizes the tick into Noise, Notable, or Meaningful tiers.
-6. **Alert & Distribution:** Publishes classified frame via Redis Pub/Sub to FastAPI WebSocket endpoints.
-7. **Explanation & Visualization:** React client dynamically renders the dual-zone layout, $\pm 1\sigma$ volatility bands, and replay scrubber.
 
 ---
 
@@ -131,16 +127,16 @@ UI Zone Re-ordering & Signal Explainability Visualization
 
 ```
 +───────────────────────────────────────────────────────────+
-|                 Market Price Feed                         |
-|  - In-process Asyncio Generator (12 Indian Equities)      |
-|  - Calibrated Volatilities (High / Medium / Defensive)    |
+|                 Market Price Generator                    |
+|  - Simulated real-time price feed (12 Indian equities)    |
+|  - Generates ticks every 2 seconds                        |
 +─────────────────────────────┬─────────────────────────────+
                               │
                               ▼
 +───────────────────────────────────────────────────────────+
 |                 Backend Service (FastAPI)                 |
-|  - Change Detection Engine (Rolling z-score computation)   |
-|  - Monotonic Timestamp & Edge-Case Validator              |
+|  - Change Detection Engine (Calculates 20-tick Z-Scores)  |
+|  - Data Validator (Rejects stale and out-of-order ticks)  |
 |  - REST Endpoints (/api/watchlists, /api/instruments)     |
 |  - WebSocket Endpoint (/ws/watchlist/{id})                |
 +─────────────────────────────┬─────────────────────────────+
@@ -149,29 +145,20 @@ UI Zone Re-ordering & Signal Explainability Visualization
                ▼                             ▼
 +───────────────────────────+   +───────────────────────────+
 |    Database Layer         |   |    Cache & Pub/Sub        |
-|  - SQLite (Local/Render)  |   |  - In-Memory Redis Adapter|
-|  - PostgreSQL (Compose)   |   |  - Redis 7 (Multi-node)   |
-|  - SQLAlchemy 2.0 Async   |   |  - Sliding Window (N=20)  |
+|  - SQLite / PostgreSQL    |   |  - In-Memory Redis /      |
+|  - SQLAlchemy 2.0 Async   |   |    Redis 7                |
+|  - Stores users & lists   |   |  - 20-tick sliding window |
 +───────────────────────────+   +───────────────────────────+
                               │
                               ▼
 +───────────────────────────────────────────────────────────+
 |                 Frontend Client (React 19)                |
-|  - Zustand Store (Real-time tick state & latency gauge)   |
-|  - TanStack Query v5 (REST cache & optimistic sync)       |
-|  - Recharts (Volatility envelopes & sigma bands)          |
-|  - Two-Zone Dual Layout (Flagged vs Quiet)                |
+|  - Dual-Zone Watchlist Layout (Flagged vs Quiet)          |
+|  - Real-Time WebSocket Streaming                          |
+|  - Interactive Volatility Band Chart                      |
+|  - Frame-by-Frame Signal Replay                           |
 +───────────────────────────────────────────────────────────+
 ```
-
-### Components
-
-- **Frontend:** Single-page application built with React 19 and TypeScript, using custom CSS for low-overhead rendering.
-- **Backend:** FastAPI application running on Python 3.12 with asynchronous endpoints and background task workers.
-- **Market Feed:** Asyncio background generator emitting 2-second tick intervals across 12 instruments.
-- **Data Layer:** SQLAlchemy 2.0 async engine supporting SQLite for single-container cloud deployment and PostgreSQL for production cluster setups.
-- **WebSocket / API:** Real-time bi-directional channel for tick streaming, stream pause/resume commands, and REST endpoints for watchlist CRUD operations.
-- **State Management:** Zustand store for real-time WebSocket tick ingestion and TanStack Query v5 for REST resource caching.
 
 ---
 
@@ -179,32 +166,32 @@ UI Zone Re-ordering & Signal Explainability Visualization
 
 | Layer | Technology | Purpose |
 |---|---|---|
-| Frontend Framework | React 19, TypeScript | User interface and reactive state rendering |
-| Bundler | Vite | Build tooling and local development server |
-| State Management | Zustand | In-memory real-time tick caching and socket state |
-| Data Fetching | TanStack Query v5 | REST API query caching and server-state sync |
-| Charts | Recharts | Volatility envelope curve and $\pm 1\sigma$ band plotting |
-| Styling | Vanilla CSS | Custom design tokens and tabular numerical layouts |
-| Backend Framework | Python 3.12, FastAPI, Uvicorn | High-throughput async REST and WebSocket API |
-| Database & ORM | SQLite (`aiosqlite`) / PostgreSQL (`asyncpg`), SQLAlchemy 2.0 | Relational data persistence and schema management |
-| Migrations | Alembic | Database migration management |
-| Cache & Pub/Sub | In-Memory Redis Adapter / Redis 7 (`redis-py`) | Sliding window storage and real-time event routing |
-| Validation | Pydantic v2, `pydantic-settings` | Request/response data validation and configuration |
+| Frontend Framework | React 19, TypeScript | Reactive user interface and components |
+| Bundler | Vite | Fast development server and production build tool |
+| State Management | Zustand | In-memory real-time tick caching and socket connection |
+| Data Fetching | TanStack Query v5 | REST API query caching and synchronization |
+| Charts | Recharts | 20-tick volatility curve and envelope charts |
+| Styling | Custom CSS | Clean design system with tabular numerical layouts |
+| Backend Framework | Python 3.12, FastAPI, Uvicorn | Async REST API and WebSocket server |
+| Database & ORM | SQLite / PostgreSQL, SQLAlchemy 2.0 | User and watchlist data storage |
+| Migrations | Alembic | Database schema migrations |
+| Cache & Pub/Sub | In-Memory Redis / Redis 7 | 20-tick sliding window and real-time messaging |
+| Data Validation | Pydantic v2 | Request/response data validation |
 | Deployment | Docker, Render | Containerization and cloud hosting |
 
 ---
 
-## Market Data
+## Market Data Feed
 
-Groww Sense currently uses a simulated market feed for demonstration purposes.
+Groww Sense currently uses a built-in simulated market feed for demonstration purposes.
 
-The simulated price feed models 12 Indian equity instruments across three calibrated volatility profiles using Geometric Brownian Motion:
+The simulator generates live ticks every 2 seconds for 12 Indian equity instruments across three volatility profiles:
 
-- **High Volatility ($\sigma = 0.025 - 0.030$):** Tata Motors (`TATAMOTORS`), Adani Enterprises (`ADANIENT`), Reliance Industries (`RELIANCE`).
-- **Medium Volatility ($\sigma = 0.010 - 0.014$):** Infosys (`INFY`), TCS (`TCS`), HDFC Bank (`HDFCBANK`), Wipro (`WIPRO`), ICICI Bank (`ICICIBANK`), State Bank of India (`SBIN`).
-- **Low Volatility / Defensive ($\sigma = 0.004 - 0.005$):** Nestlé India (`NESTLEIND`), Hindustan Unilever (`HINDUNILVR`), Pidilite Industries (`PIDILITIND`).
+- **High Volatility:** Tata Motors (`TATAMOTORS`), Adani Enterprises (`ADANIENT`), Reliance Industries (`RELIANCE`).
+- **Medium Volatility:** Infosys (`INFY`), TCS (`TCS`), HDFC Bank (`HDFCBANK`), Wipro (`WIPRO`), ICICI Bank (`ICICIBANK`), State Bank of India (`SBIN`).
+- **Low Volatility (Defensive):** Nestlé India (`NESTLEIND`), Hindustan Unilever (`HINDUNILVR`), Pidilite Industries (`PIDILITIND`).
 
-The generator emits tick updates every 2.0 seconds and intentionally introduces a 5% probability of stale or duplicate ticks to validate the backend ingestion guardrails.
+The feed includes a 5% chance of simulated stale ticks to test and verify the backend data validation rules.
 
 ---
 
@@ -214,19 +201,19 @@ The generator emits tick updates every 2.0 seconds and intentionally introduces 
 
 ![Groww Sense Starting Page](docs/screenshots/landing_page.png)
 
-Overview screen presenting the core architecture pillars and access to the live monitoring dashboard.
+Starting screen introducing the core concept and providing entry to the live dashboard.
 
 ### Watchlist Dashboard
 
 ![Watchlist Dashboard](docs/screenshots/watchlist_dashboard.png)
 
-Live monitoring view showing real-time market pulse metrics, feed health, and dynamic segregation into Flagged and Quiet zones.
+Live dashboard with real-time WebSocket connection, showing stocks separated into Flagged and Quiet zones.
 
 ### Signal Explanation
 
 ![Signal Explanation & Volatility Band](docs/screenshots/signal_explanation.png)
 
-Detailed explainability panel displaying rolling mean, standard deviation, current z-score, the 20-tick volatility curve, and signal replay controls.
+Interactive inspection panel displaying the rolling average, fluctuation values, Z-score, volatility chart, and replay button.
 
 ---
 
@@ -234,38 +221,38 @@ Detailed explainability panel displaying rolling mean, standard deviation, curre
 
 ```
 GrowwSense/
-|-- Dockerfile                  # Multi-stage container build (Node frontend + Python backend)
-|-- docker-compose.yml          # Multi-container configuration (PostgreSQL + Redis + App)
-|-- render.yaml                 # Render Infrastructure-as-Code specification
-|-- run.sh                      # Zero-dependency local startup script
-|-- package.json                # Root project configuration
+|-- Dockerfile                  # Multi-stage container build (Frontend + Backend)
+|-- docker-compose.yml          # Multi-container setup (PostgreSQL + Redis + App)
+|-- render.yaml                 # Render cloud deployment blueprint
+|-- run.sh                      # One-command local startup script
+|-- package.json                # Workspace configuration
 |-- docs/
-|   \-- screenshots/            # Documentation images
+|   \-- screenshots/            # Application screenshot assets
 |-- backend/
 |   |-- alembic/                # Database migrations
-|   |-- requirements.txt        # Python dependency specifications
+|   |-- requirements.txt        # Python dependencies
 |   |-- scripts/
-|   |   \-- seed.py             # Database seed script for default demo user and instruments
+|   |   \-- seed.py             # Database seed script for demo data
 |   \-- app/
 |       |-- main.py             # FastAPI entrypoint and static asset mount
-|       |-- config.py           # Configuration schema and environment parsing
-|       |-- database.py         # SQLAlchemy async engine configuration
-|       |-- memory_redis.py     # Fallback in-memory Redis implementation
-|       |-- redis_client.py     # Redis connection factory
-|       |-- models/             # SQLAlchemy ORM models (User, Watchlist, Instrument, LastSeen)
+|       |-- config.py           # Application settings and environment variables
+|       |-- database.py         # SQLAlchemy database engine setup
+|       |-- memory_redis.py     # Built-in in-memory Redis implementation
+|       |-- redis_client.py     # Redis connection manager
+|       |-- models/             # Database models (User, Watchlist, Instrument)
 |       |-- routers/            # API endpoints (watchlists, instruments, websocket)
-|       |-- services/           # Change detection and baseline diffing engines
-|       \-- simulator/          # Price feed simulation worker
+|       |-- services/           # Change detection and baseline diffing logic
+|       \-- simulator/          # Price feed simulation engine
 \-- frontend/
-    |-- package.json            # Node dependency specifications
+    |-- package.json            # Frontend dependencies
     |-- vite.config.ts          # Vite build configuration
     \-- src/
-        |-- App.tsx             # Root application component and view routing
-        |-- index.css           # Design tokens and global CSS styles
-        |-- api/                # API client and TanStack query hooks
-        |-- hooks/              # Custom React hooks (useWatchlistSocket)
+        |-- App.tsx             # Main application router
+        |-- index.css           # Design tokens and styles
+        |-- api/                # API client and query hooks
+        |-- hooks/              # WebSocket hook (useWatchlistSocket)
         |-- store/              # Zustand state store
-        \-- components/         # Modular UI components (Watchlist, ExplainPanel, etc.)
+        \-- components/         # UI components (WatchlistView, ExplainPanel, etc.)
 ```
 
 ---
@@ -277,9 +264,9 @@ GrowwSense/
 - Python 3.11 or higher
 - Node.js 18 or higher (with npm)
 
-### Run Locally
+### Run Locally (Single Command)
 
-Clone the repository and run the single zero-dependency setup script:
+Clone the repository and run the startup script:
 
 ```bash
 git clone https://github.com/eekshitaandhavarapu/Groww-Sense-Market-Signals.git
@@ -288,68 +275,62 @@ chmod +x run.sh
 ./run.sh
 ```
 
-This script installs dependencies, runs database migrations, seeds default instruments, and launches both the backend and frontend services.
+This single command installs dependencies, runs database migrations, seeds demo stocks, and starts both backend and frontend servers.
 
-### Application URLs
+### Local URLs
 
-- **Frontend Application:** http://localhost:5173
-- **Interactive Swagger Documentation:** http://localhost:8000/docs
+- **Frontend App:** http://localhost:5173
+- **Interactive API Documentation:** http://localhost:8000/docs
 - **API Health Check:** http://localhost:8000/api/health
 
 ---
 
-## Docker
+## Docker Setup
 
-To run the application with PostgreSQL and Redis 7 using Docker:
+To run the complete application using Docker:
 
 ```bash
 docker compose up -d
 ```
 
-Access the containerized application at:
 - **Application & API:** http://localhost:8000
-- **Interactive API Docs:** http://localhost:8000/docs
+- **Interactive Swagger Docs:** http://localhost:8000/docs
 
 ---
 
 ## Deployment
 
-Groww Sense is configured for automated cloud deployment on Render via `render.yaml`.
+Groww Sense is configured for continuous deployment on Render via `render.yaml`.
 
-The deployment architecture utilizes a multi-stage Docker build:
-1. **Frontend Stage:** Compiles React 19 TypeScript source code into static assets (`/dist`).
-2. **Backend Stage:** Installs Python dependencies, packages the FastAPI server, mounts the static frontend bundle, and runs database migrations on container start.
-
-Production environment variables:
-- `DATABASE_URL`: Managed PostgreSQL or SQLite connection string.
-- `REDIS_URL`: Managed Redis or in-memory fallback connection string.
-- `CORS_ORIGINS`: Comma-delimited list of authorized production origins.
+The deployment uses a multi-stage Docker build:
+1. **Frontend Stage:** Compiles the React 19 application into static production files (`/dist`).
+2. **Backend Stage:** Installs Python packages, starts FastAPI with Uvicorn, mounts the frontend static files, and executes database migrations on launch.
 
 ---
 
-## Demo / Evaluation Flow
+## Demo / Evaluation Steps
 
-1. **Access the Application:** Open the live deployment at [https://groww-sense-market-signals.onrender.com](https://groww-sense-market-signals.onrender.com) and click **Get Started**.
-2. **Observe Watchlist Zones:** Review the live feed. Instruments exhibiting routine movement remain in the Quiet Zone, while instruments experiencing price anomalies are automatically promoted to the Flagged Zone.
-3. **Inspect Real-Time Data Health:** Check the Data Health header to verify active WebSocket connection status, tick processing rate, and round-trip latency.
-4. **Open Explainability Panel:** Click on any instrument card (such as *Tata Motors* or *Nestlé India*) to view its rolling parameters ($\mu$, $\sigma$, $z$-score) and volatility envelope chart.
-5. **Replay Signal Trajectory:** Click **Replay Signal Sequence** inside the Explainability Panel to step through the 20 individual price ticks leading up to the anomaly.
-6. **Review Session History & Insights:** Navigate to the **History** tab to inspect baseline price diffs since your last visit, and the **Insights** tab to analyze sector-wide volatility distributions.
-7. **Simulate Feed Stall:** Click **Pause Stream** in the Data Health bar to verify that the UI handles stalled market feeds properly, then click **Resume** to restore live streaming.
+1. **Open Live App:** Navigate to [https://groww-sense-market-signals.onrender.com](https://groww-sense-market-signals.onrender.com) and click **Get Started**.
+2. **Observe Watchlist Zones:** Watch the live price updates. Normal stocks stay in the Quiet Zone, while stocks with sudden price movements move into the Flagged Zone.
+3. **Check Data Health:** Look at the top bar to see active WebSocket connection, tick count, and live latency.
+4. **Inspect Signal Calculation:** Click any stock (such as *Tata Motors* or *Nestlé India*) to open the Explain Panel and see its rolling average, fluctuation, and Z-Score.
+5. **Replay Price History:** Click **Replay Signal Sequence** inside the Explain Panel to step backward and forward through the 20 ticks leading to the alert.
+6. **Review History & Insights:** Open the **History** tab to see price baseline changes since your last visit, and the **Insights** tab to view portfolio volatility distribution.
+7. **Test Stream Pause:** Click **Pause Stream** in the Data Health bar to test how the interface handles a stalled market feed, then click **Resume** to reconnect.
 
 ---
 
 ## Limitations
 
-- **Simulated Market Feed:** The current version operates on a calibrated synthetic price generator rather than a direct exchange feed.
-- **Non-Predictive Anomaly Detection:** Rolling z-scores identify historical statistical outliers in recent tick data; they do not forecast future asset price directions.
-- **No Financial Advice:** This software is an engineering demonstration of real-time statistical anomaly detection and does not constitute financial or investment recommendations.
+- **Simulated Feed:** Operates on synthetic price generation rather than a direct exchange data feed.
+- **Statistical Detection, Not Prediction:** Identifies statistical outliers in recent history; does not predict future prices.
+- **Demonstration Software:** Created for technical demonstration purposes and is not financial advice.
 
 ---
 
 ## Future Improvements
 
-- **Live Exchange Feed Integration:** Support for direct market data feeds (such as NSE/BSE WebSockets) via broker APIs.
-- **User-Configurable Window & Sensitivity:** Interface controls allowing users to adjust the rolling window size ($N$) and z-score thresholds per instrument.
-- **Advanced Anomaly Models:** Complementing rolling z-scores with exponential moving average (EMA) bands and volume-weighted anomaly detection (VWAP).
-- **Multi-Watchlist Management:** Support for creating and managing multiple custom sector-specific watchlists.
+- Integration with live exchange broker APIs (NSE / BSE).
+- User-customizable rolling window sizes and alert thresholds.
+- Additional technical indicators such as Exponential Moving Averages (EMA) and Volume-Weighted Average Price (VWAP).
+- Support for multiple customized watchlists.
