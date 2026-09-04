@@ -1,3 +1,4 @@
+from app.simulator.price_feed import register_instrument_simulator
 """Watchlist service — orchestrates DB + Redis reads for the watchlist endpoints."""
 
 import uuid
@@ -97,8 +98,16 @@ async def get_user_watchlists(db: AsyncSession, user_id: uuid.UUID) -> list[Watc
 async def add_item_to_watchlist(
     db: AsyncSession, watchlist_id: uuid.UUID, symbol: str
 ) -> WatchlistItem:
-    """Add an instrument to a watchlist."""
-    item = WatchlistItem(watchlist_id=watchlist_id, symbol=symbol)
+    """Add an instrument to a watchlist (auto-creating instrument if custom)."""
+    sym = symbol.strip().upper()
+    inst_res = await db.execute(select(Instrument).where(Instrument.symbol == sym))
+    inst = inst_res.scalar_one_or_none()
+    if inst is None:
+        inst = Instrument(symbol=sym, name=sym, sector="Custom / Other")
+        db.add(inst)
+        await db.flush()
+        register_instrument_simulator(sym, base_price=1000.0, volatility=0.015)
+    item = WatchlistItem(watchlist_id=watchlist_id, symbol=sym)
     db.add(item)
     await db.flush()
     return item

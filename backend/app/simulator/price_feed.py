@@ -126,3 +126,15 @@ async def run_price_feed():
             logger.error(f"Price feed error on tick #{tick_count}: {e}")
 
         await asyncio.sleep(settings.TICK_INTERVAL_SECONDS)
+
+def register_instrument_simulator(symbol: str, base_price: float = 1000.0, volatility: float = 0.015):
+    """Dynamically register any custom instrument to the real-time simulation loop."""
+    sym = symbol.upper().strip()
+    if sym not in INSTRUMENTS:
+        INSTRUMENTS[sym] = {
+            "base_price": float(base_price if base_price > 0 else 1000.0),
+            "volatility": float(volatility if volatility > 0 else 0.015)
+        }
+        current_prices[sym] = float(base_price if base_price > 0 else 1000.0)
+        last_tick_times[sym] = datetime.now(timezone.utc)
+        logger.info(f"Registered new custom instrument in simulator: {sym} (base: {base_price}, vol: {volatility})")

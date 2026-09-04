@@ -1,14 +1,15 @@
 """Instrument API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.redis_client import get_redis
 from app.models.instrument import Instrument
-from app.schemas.instrument import InstrumentResponse, InstrumentHistoryResponse
+from app.schemas.instrument import InstrumentResponse, InstrumentHistoryResponse, CreateInstrumentRequest
 from app.services.change_detection import get_instrument_stats, get_instrument_history
+from app.simulator.price_feed import register_instrument_simulator
 
 router = APIRouter(prefix="/instruments", tags=["instruments"])
 
@@ -37,6 +38,40 @@ async def list_instruments(
         )
         for inst in instruments
     ]
+
+
+@router.post("", response_model=InstrumentResponse, status_code=status.HTTP_201_CREATED)
+async def create_custom_instrument(
+    data: CreateInstrumentRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new custom instrument and register it in the real-time simulator feed."""
+    clean_sym = data.symbol.strip().upper()
+    clean_name = data.name.strip()
+    clean_sector = (data.sector or "Custom / Other").strip()
+
+    # Check if already exists in DB
+    existing = await db.execute(select(Instrument).where(Instrument.symbol == clean_sym))
+    inst = existing.scalar_one_or_none()
+
+    if inst is None:
+        inst = Instrument(symbol=clean_sym, name=clean_name, sector=clean_sector)
+        db.add(inst)
+        await db.commit()
+        await db.refresh(inst)
+
+    # Register in active simulator feed
+    register_instrument_simulator(
+        symbol=clean_sym,
+        base_price=data.base_price,
+        volatility=data.volatility,
+    )
+
+    return InstrumentResponse(
+        symbol=inst.symbol,
+        name=inst.name,
+        sector=inst.sector,
+    )
 
 
 @router.get("/{symbol}/history", response_model=InstrumentHistoryResponse)
